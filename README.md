@@ -8,6 +8,8 @@ Questo plugin permette di scaricare direttamente i confini amministrativi italia
 
 I dati sono aggiornati al 1° gennaio 2025 e vengono scaricati direttamente dai server ISTAT.
 
+![](GUI.png)
+
 ## Funzionalità principali
 
 - 🔄 Download automatico dei file ZIP da ISTAT
@@ -84,7 +86,7 @@ I confini scaricati includono:
 
 - **Input**: File ZIP da server ISTAT
 - **Output**: Shapefile caricati direttamente in QGIS
-- **Proiezione**: WGS84 (EPSG:4326)
+- **Proiezione**: EPSG:32632
 
 ## Risoluzione problemi
 
