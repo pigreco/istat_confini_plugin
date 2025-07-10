@@ -156,6 +156,7 @@ Questo plugin è rilasciato sotto licenza open source. Vedi il file LICENSE per 
 - **ISTAT** per la disponibilità dei dati cartografici
 - **Comunità QGIS** per il framework di sviluppo plugin
 - **Contributori** del progetto
+- **Claude AI** per aver creato gli script
 
 ---
 
