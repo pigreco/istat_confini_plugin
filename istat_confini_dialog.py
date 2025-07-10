@@ -25,7 +25,7 @@ import os
 from qgis.PyQt import QtCore, QtGui, QtWidgets
 from qgis.PyQt.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QRadioButton, 
                                 QCheckBox, QPushButton, QLabel, QButtonGroup, 
-                                QLineEdit, QFileDialog, QGroupBox)
+                                QLineEdit, QFileDialog, QGroupBox, QTabWidget)
 
 
 class IstatConfiniDialog(QDialog):
@@ -36,7 +36,7 @@ class IstatConfiniDialog(QDialog):
     def setupUi(self):
         """Imposta l'interfaccia utente della finestra di dialogo"""
         self.setObjectName("IstatConfiniDialog")
-        self.resize(450, 400)  # Ridotta l'altezza
+        self.resize(450, 450)  # Aumentata l'altezza per le tab
         self.setWindowTitle("Scarica Confini Amministrativi ISTAT")
         self.setModal(True)
         
@@ -57,10 +57,42 @@ class IstatConfiniDialog(QDialog):
         """)
         main_layout.addWidget(title_label)
         
+        # Widget a tab
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                background-color: white;
+            }
+            QTabBar::tab {
+                background-color: #f8f9fa;
+                padding: 8px 16px;
+                margin-right: 2px;
+                border: 1px solid #dee2e6;
+                border-bottom: none;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+            }
+            QTabBar::tab:selected {
+                background-color: white;
+                border-bottom: 1px solid white;
+            }
+            QTabBar::tab:hover {
+                background-color: #e9ecef;
+            }
+        """)
+        
+        # Tab principale
+        main_tab = QtWidgets.QWidget()
+        main_tab_layout = QVBoxLayout()
+        main_tab_layout.setSpacing(15)
+        main_tab_layout.setContentsMargins(15, 15, 15, 15)
+        
         # Sezione tipo di confine
         boundary_label = QLabel("🗺️ Tipo di confine amministrativo:")
         boundary_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 10px; color: #34495e;")
-        main_layout.addWidget(boundary_label)
+        main_tab_layout.addWidget(boundary_label)
         
         # Contenitore per i radio buttons dei confini
         boundary_container = QtWidgets.QFrame()
@@ -115,12 +147,12 @@ class IstatConfiniDialog(QDialog):
         self.radio_regioni.setChecked(True)
         
         boundary_container.setLayout(boundary_layout)
-        main_layout.addWidget(boundary_container)
+        main_tab_layout.addWidget(boundary_container)
         
         # Sezione generalizzazione
         generalization_label = QLabel("⚙️ Livello di dettaglio:")
         generalization_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 15px; color: #34495e;")
-        main_layout.addWidget(generalization_label)
+        main_tab_layout.addWidget(generalization_label)
         
         # Contenitore per la generalizzazione
         gen_container = QtWidgets.QFrame()
@@ -149,12 +181,12 @@ class IstatConfiniDialog(QDialog):
         self.radio_generalizzata.setChecked(True)
         
         gen_container.setLayout(gen_layout)
-        main_layout.addWidget(gen_container)
+        main_tab_layout.addWidget(gen_container)
         
         # Sezione cartella di output
         output_label = QLabel("📁 Cartella di destinazione:")
         output_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 15px; color: #34495e;")
-        main_layout.addWidget(output_label)
+        main_tab_layout.addWidget(output_label)
         
         # Contenitore per la selezione cartella
         output_container = QtWidgets.QFrame()
@@ -202,12 +234,21 @@ class IstatConfiniDialog(QDialog):
         output_layout.addWidget(self.browse_button)
         
         output_container.setLayout(output_layout)
-        main_layout.addWidget(output_container)
+        main_tab_layout.addWidget(output_container)
         
-        # Opzioni aggiuntive
-        options_label = QLabel("⚙️ Opzioni:")
-        options_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 15px; color: #34495e;")
-        main_layout.addWidget(options_label)
+        main_tab.setLayout(main_tab_layout)
+        self.tab_widget.addTab(main_tab, "📋 Principale")
+        
+        # Tab opzioni avanzate e info
+        advanced_tab = QtWidgets.QWidget()
+        advanced_tab_layout = QVBoxLayout()
+        advanced_tab_layout.setSpacing(15)
+        advanced_tab_layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Opzioni avanzate
+        options_label = QLabel("⚙️ Opzioni avanzate:")
+        options_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 10px; color: #34495e;")
+        advanced_tab_layout.addWidget(options_label)
         
         options_container = QtWidgets.QFrame()
         options_container.setStyleSheet("""
@@ -243,7 +284,7 @@ class IstatConfiniDialog(QDialog):
                 border-radius: 3px;
             }
         """)
-        self.keep_files_checkbox.setChecked(True)  # Default: mantieni i file
+        self.keep_files_checkbox.setChecked(True)
         
         self.open_folder_checkbox = QCheckBox("📂  Apri la cartella di destinazione al termine")
         self.open_folder_checkbox.setStyleSheet(self.keep_files_checkbox.styleSheet())
@@ -253,7 +294,53 @@ class IstatConfiniDialog(QDialog):
         options_layout.addWidget(self.open_folder_checkbox)
         
         options_container.setLayout(options_layout)
-        main_layout.addWidget(options_container)
+        advanced_tab_layout.addWidget(options_container)
+        
+        # Sezione informazioni
+        info_label = QLabel("ℹ️ Informazioni:")
+        info_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 15px; color: #34495e;")
+        advanced_tab_layout.addWidget(info_label)
+        
+        info_container = QtWidgets.QFrame()
+        info_container.setStyleSheet("""
+            QFrame {
+                background-color: #e8f4fd;
+                border: 1px solid #bee5eb;
+                border-radius: 8px;
+                padding: 15px;
+            }
+        """)
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(10)
+        
+        info_text = QLabel("""
+📊 <b>Fonte dati:</b> Istituto Nazionale di Statistica (ISTAT)<br>
+🗓️ <b>Aggiornamento:</b> Dati più recenti disponibili<br>
+🌍 <b>Sistema di riferimento:</b> WGS84 / UTM zone 32N (EPSG:32632)<br>
+📁 <b>Formato:</b> Shapefile (.shp)<br>
+⚖️ <b>Licenza:</b> Creative Commons Attribution 3.0 IT<br><br>
+<i>I dati sono forniti dall'ISTAT e sono utilizzabili secondo i termini della licenza CC BY 3.0 IT.</i>
+        """)
+        info_text.setWordWrap(True)
+        info_text.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #495057;
+                line-height: 1.4;
+            }
+        """)
+        
+        info_layout.addWidget(info_text)
+        info_container.setLayout(info_layout)
+        advanced_tab_layout.addWidget(info_container)
+        
+        # Aggiunge spazio flessibile alla fine
+        advanced_tab_layout.addStretch()
+        
+        advanced_tab.setLayout(advanced_tab_layout)
+        self.tab_widget.addTab(advanced_tab, "⚙️ Avanzate & Info")
+        
+        main_layout.addWidget(self.tab_widget)
         
         # Bottoni OK e Cancel
         button_layout = QHBoxLayout()
