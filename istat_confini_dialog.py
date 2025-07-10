@@ -36,7 +36,7 @@ class IstatConfiniDialog(QDialog):
     def setupUi(self):
         """Imposta l'interfaccia utente della finestra di dialogo"""
         self.setObjectName("IstatConfiniDialog")
-        self.resize(450, 500)
+        self.resize(450, 400)  # Ridotta l'altezza
         self.setWindowTitle("Scarica Confini Amministrativi ISTAT")
         self.setModal(True)
         
@@ -254,31 +254,6 @@ class IstatConfiniDialog(QDialog):
         
         options_container.setLayout(options_layout)
         main_layout.addWidget(options_container)
-        
-        # Informazioni aggiuntive
-        info_label = QLabel("""
-        ℹ️ <b>Informazioni:</b><br>
-        • Dati aggiornati al 1° gennaio 2025<br>
-        • Fonte: ISTAT - Confini delle unità amministrative<br>
-        • I file verranno scaricati automaticamente e caricati in QGIS<br>
-        • Sistema di coordinate: WGS84 / UTM zone 32N (EPSG:32632)
-        """)
-        info_label.setStyleSheet("""
-            color: #6c757d; 
-            font-size: 11px; 
-            margin-top: 15px; 
-            padding: 15px; 
-            background-color: #e3f2fd;
-            border: 1px solid #bbdefb;
-            border-radius: 8px;
-            line-height: 1.4;
-        """)
-        info_label.setWordWrap(True)
-        main_layout.addWidget(info_label)
-        
-        # Spacer per spingere i bottoni in basso
-        spacer = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        main_layout.addItem(spacer)
         
         # Bottoni OK e Cancel
         button_layout = QHBoxLayout()
