@@ -28,12 +28,15 @@ import requests
 import shutil
 import subprocess
 import platform
+import urllib3
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QThread, pyqtSignal
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QProgressDialog
 from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis
 from .istat_confini_dialog import IstatConfiniDialog
 
+# Disabilita gli avvisi SSL
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class DownloadThread(QThread):
     progress = pyqtSignal(int)
@@ -47,7 +50,8 @@ class DownloadThread(QThread):
     
     def run(self):
         try:
-            response = requests.get(self.url, stream=True)
+            # Ignora la verifica SSL per gestire certificati scaduti
+            response = requests.get(self.url, stream=True, verify=False, timeout=30)
             response.raise_for_status()
             
             total_size = int(response.headers.get('content-length', 0))
@@ -63,6 +67,12 @@ class DownloadThread(QThread):
                             self.progress.emit(progress_percent)
             
             self.finished.emit(self.output_path)
+        except requests.exceptions.SSLError as e:
+            # Gestione specifica per errori SSL
+            self.error.emit(f"Errore SSL (certificato potenzialmente scaduto): {str(e)}")
+        except requests.exceptions.RequestException as e:
+            # Altri errori di rete
+            self.error.emit(f"Errore di rete: {str(e)}")
         except Exception as e:
             self.error.emit(str(e))
 
@@ -253,6 +263,17 @@ class IstatConfiniPlugin:
                               "Seleziona una cartella di destinazione valida.")
             return
         
+        # Mostra avviso per SSL
+        reply = QMessageBox.question(
+            self.iface.mainWindow(),
+            "Avviso Sicurezza",
+            "Il download ignorerà la verifica dei certificati SSL per gestire eventuali certificati scaduti del server ISTAT.\nVuoi continuare?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes
+        )
+        if reply == QMessageBox.No:
+            return
+        
         # Determina l'URL in base alla scelta
         if is_generalized:
             url = "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip"
@@ -290,9 +311,16 @@ class IstatConfiniPlugin:
         """Gestisce gli errori di download"""
         self.cleanup_temp_files()
         self.progress_dialog.close()
+        
+        # Messaggio più dettagliato per errori SSL
+        if "SSL" in error_msg or "certificato" in error_msg.lower():
+            detailed_msg = f"{error_msg}\n\nIl server ISTAT potrebbe avere problemi con i certificati SSL.\nIl plugin ha tentato di scaricare ignorando la verifica SSL."
+        else:
+            detailed_msg = f"Errore durante il download: {error_msg}"
+            
         QMessageBox.critical(self.iface.mainWindow(), 
                            "Errore", 
-                           f"Errore durante il download: {error_msg}")
+                           detailed_msg)
 
     def extract_and_load(self, zip_path):
         """Estrae i dati e carica il layer in QGIS"""
