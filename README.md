@@ -115,19 +115,8 @@ I contributi sono benvenuti! Per contribuire:
 4. Testa con diverse versioni QGIS
 5. Invia una Pull Request
 
-### Struttura progetto
-```
-istat_confini_plugin/
-├── __init__.py          # Inizializzazione plugin
-├── metadata.txt         # Metadati QGIS
-├── icon.png            # Icona plugin
-├── resources.qrc       # Risorse Qt
-├── ui/                 # File interfaccia utente
-└── scripts/           # Logic di download e processing
-```
-
 ### Test
-- Testato su QGIS 3.16-3.34
+- Testato su QGIS 3.16-3.40
 - Compatibile Windows, Linux, macOS
 - Testato con tutti i tipi di confini ISTAT
 
@@ -157,7 +146,3 @@ Questo plugin è rilasciato sotto licenza open source. Vedi il file LICENSE per 
 - **Comunità QGIS** per il framework di sviluppo plugin
 - **Contributori** del progetto
 - **Claude AI** per aver creato gli script
-
----
-
-**Tags**: italy, boundaries, istat, administrative, confini, italia, regioni, province, comuni, cartografia
