@@ -7,24 +7,30 @@
 [general]
 name=Confini Amministrativi ISTAT
 qgisMinimumVersion=3.0
-description=Plugin per scaricare e caricare automaticamente i confini amministrativi italiani da ISTAT
-version=1.0.0
+description=Plugin per scaricare confini amministrativi ISTAT e griglia di popolazione 2021 su standard europeo
+version=1.1.0
 author=Totò Fiandaca
 email=pigrecoinfinito@gmail.com
 
 about=Questo plugin permette di scaricare direttamente i confini amministrativi italiani 
-    dal sito ISTAT e caricarli automaticamente in QGIS. Supporta regioni, province, 
-    comuni e ripartizioni geografiche sia in versione generalizzata che non generalizzata.
+    dal sito ISTAT e la griglia di popolazione 2021 su standard europeo (Eurostat). 
+    Supporta regioni, province, comuni e ripartizioni geografiche sia in versione generalizzata 
+    che non generalizzata. Include anche la griglia di popolazione del Censimento 2021 
+    con 13 variabili censuarie secondo il Regolamento UE 1799/2018.
     I dati sono aggiornati al 1° gennaio 2025 e vengono scaricati direttamente dai server ISTAT.
     
     Funzionalità principali:
     - Download automatico dei file ZIP da ISTAT
     - Selezione tra 4 tipi di confini amministrativi
+    - Griglia di popolazione 2021 (celle 1 km², EPSG:3035)
+    - Download multipli simultanei (confini + griglia)
     - Opzione per versione generalizzata o dettagliata
+    - Interfaccia con 3 tab organizzati
     - Caricamento automatico in QGIS
     - Interfaccia completamente in italiano
     - Barra di progresso durante il download
     - Gestione errori integrata
+    - Possibilità di scaricare solo griglia popolazione
 
 tracker=https://github.com/pigreco/istat_confini_plugin/issues
 repository=https://github.com/pigreco/istat_confini_plugin
@@ -35,7 +41,21 @@ repository=https://github.com/pigreco/istat_confini_plugin
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=1.0.0
+changelog=1.1.0
+    - 📊 NUOVO: Tab "Griglia di popolazione 2021" per dataset demografici ISTAT
+    - 🔄 NUOVO: Download multipli simultanei (confini + griglia popolazione)  
+    - ❌ NUOVO: Opzione "Nessun confine" per scaricare solo griglia popolazione
+    - 📈 NUOVO: Griglia popolazione Censimento 2021 su standard europeo (Eurostat)
+    - 🇪🇺 NUOVO: 13 variabili censuarie secondo Regolamento UE 1799/2018
+    - 🎯 Interfaccia migliorata con 3 tab organizzati e UI dinamica
+    - ⚡ Sistema di download in coda ottimizzato
+    - 🗺️ Tab "Confini Amministrativi" rinominato per chiarezza
+    - 🛡️ Gestione errori migliorata per download multipli
+    - 📋 Messaggi di successo più informativi
+    - 📖 Link documentazione ufficiale ISTAT
+    - 💾 Dimensioni corrette: ~12 MB compressi, ~250 MB estratti
+    - 🌍 Sistema di riferimento EPSG:3035 per griglia europea
+    1.0.0
     - ✨ Prima release del plugin
     - 🔄 Download automatico confini ISTAT 2025
     - 🗺️ Supporto per tutti i livelli amministrativi italiani
@@ -46,7 +66,7 @@ changelog=1.0.0
     - ⚠️ Validazione connessione internet
 
 # Tags are comma separated with spaces allowed
-tags=italy,boundaries,istat,administrative,confini,italia,regioni,province,comuni,cartografia
+tags=italy,boundaries,istat,administrative,confini,italia,regioni,province,comuni,cartografia,popolazione,census,griglia,eurostat,demographic,population,grid
 
 homepage=https://github.com/pigreco/istat_confini_plugin
 category=Vector

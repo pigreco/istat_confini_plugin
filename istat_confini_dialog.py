@@ -36,8 +36,8 @@ class IstatConfiniDialog(QDialog):
     def setupUi(self):
         """Imposta l'interfaccia utente della finestra di dialogo"""
         self.setObjectName("IstatConfiniDialog")
-        self.resize(450, 450)  # Aumentata l'altezza per le tab
-        self.setWindowTitle("Scarica Confini Amministrativi ISTAT")
+        self.resize(520, 480)  # Larghezza aumentata per migliori proporzioni
+        self.setWindowTitle("Scarica Dati ISTAT")
         self.setModal(True)
         
         # Layout principale
@@ -46,7 +46,7 @@ class IstatConfiniDialog(QDialog):
         main_layout.setContentsMargins(20, 20, 20, 20)
         
         # Titolo
-        title_label = QLabel("Seleziona i confini amministrativi da scaricare")
+        title_label = QLabel("Seleziona i dati ISTAT da scaricare (confini e griglia popolazione 2021)")
         title_label.setStyleSheet("""
             font-weight: bold; 
             font-size: 16px; 
@@ -90,7 +90,7 @@ class IstatConfiniDialog(QDialog):
         main_tab_layout.setContentsMargins(15, 15, 15, 15)
         
         # Sezione tipo di confine
-        boundary_label = QLabel("🗺️ Tipo di confine amministrativo:")
+        boundary_label = QLabel("🗺️ Tipo di confine amministrativo (opzionale):")
         boundary_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 10px; color: #34495e;")
         main_tab_layout.addWidget(boundary_label)
         
@@ -110,6 +110,7 @@ class IstatConfiniDialog(QDialog):
         # Radio buttons per i tipi di confine
         self.boundary_group = QButtonGroup()
         
+        self.radio_nessuno = QRadioButton("❌  Nessun confine (solo dati aggiuntivi)")
         self.radio_regioni = QRadioButton("🏛️  Regioni")
         self.radio_province = QRadioButton("🏢  Province e Città metropolitane")
         self.radio_comuni = QRadioButton("🏘️  Comuni")
@@ -138,7 +139,7 @@ class IstatConfiniDialog(QDialog):
             }
         """
         
-        for radio in [self.radio_regioni, self.radio_province, self.radio_comuni, self.radio_ripartizioni]:
+        for radio in [self.radio_nessuno, self.radio_regioni, self.radio_province, self.radio_comuni, self.radio_ripartizioni]:
             radio.setStyleSheet(radio_style)
             self.boundary_group.addButton(radio)
             boundary_layout.addWidget(radio)
@@ -237,7 +238,24 @@ class IstatConfiniDialog(QDialog):
         main_tab_layout.addWidget(output_container)
         
         main_tab.setLayout(main_tab_layout)
-        self.tab_widget.addTab(main_tab, "📋 Principale")
+        self.tab_widget.addTab(main_tab, "�️ Confini Amministrativi")
+        
+        # Aggiungi nota informativa
+        info_note = QLabel("💡 Puoi scaricare solo confini amministrativi, solo dati aggiuntivi (griglia popolazione), o entrambi contemporaneamente.")
+        info_note.setStyleSheet("""
+            QLabel {
+                font-size: 11px;
+                color: #6c757d;
+                font-style: italic;
+                margin-top: 5px;
+                padding: 8px;
+                background-color: #f8f9fa;
+                border-left: 3px solid #17a2b8;
+                border-radius: 4px;
+            }
+        """)
+        info_note.setWordWrap(True)
+        main_tab_layout.insertWidget(0, info_note)  # Inserisci all'inizio del layout
         
         # Tab opzioni avanzate e info
         advanced_tab = QtWidgets.QWidget()
@@ -262,7 +280,7 @@ class IstatConfiniDialog(QDialog):
         options_layout = QVBoxLayout()
         options_layout.setSpacing(8)
         
-        self.keep_files_checkbox = QCheckBox("🗃️  Mantieni i file scaricati dopo il caricamento")
+        self.keep_files_checkbox = QCheckBox("🗃️  Mantieni i file scaricati dopo il caricamento (altrimenti alla chiusura perdi i file)")
         self.keep_files_checkbox.setStyleSheet("""
             QCheckBox {
                 font-size: 13px;
@@ -290,11 +308,33 @@ class IstatConfiniDialog(QDialog):
         self.open_folder_checkbox.setStyleSheet(self.keep_files_checkbox.styleSheet())
         self.open_folder_checkbox.setChecked(False)
         
+        self.delete_zip_checkbox = QCheckBox("🗑️  Elimina i file ZIP dopo l'estrazione (conserva solo i file estratti)")
+        self.delete_zip_checkbox.setStyleSheet(self.keep_files_checkbox.styleSheet())
+        self.delete_zip_checkbox.setChecked(True)
+        
         options_layout.addWidget(self.keep_files_checkbox)
         options_layout.addWidget(self.open_folder_checkbox)
+        options_layout.addWidget(self.delete_zip_checkbox)
         
         options_container.setLayout(options_layout)
         advanced_tab_layout.addWidget(options_container)
+        
+        # Nota per l'opzione elimina ZIP
+        zip_note = QLabel("💡 Nota: Se elimini i file ZIP, conservi solo i dati estratti (shapefile e file associati). Utile per risparmiare spazio su disco.")
+        zip_note.setStyleSheet("""
+            QLabel {
+                font-size: 11px;
+                color: #6c757d;
+                font-style: italic;
+                margin: 5px 0px;
+                padding: 6px;
+                background-color: #e3f2fd;
+                border-left: 3px solid #2196f3;
+                border-radius: 4px;
+            }
+        """)
+        zip_note.setWordWrap(True)
+        advanced_tab_layout.addWidget(zip_note)
         
         # Sezione informazioni
         info_label = QLabel("ℹ️ Informazioni:")
@@ -318,7 +358,8 @@ class IstatConfiniDialog(QDialog):
 🗓️ <b>Aggiornamento:</b> Dati più recenti disponibili<br>
 🌍 <b>Sistema di riferimento:</b> WGS84 / UTM zone 32N (EPSG:32632)<br>
 📁 <b>Formato:</b> Shapefile (.shp)<br>
-⚖️ <b>Licenza:</b> Creative Commons Attribution 3.0 IT<br><br>
+⚖️ <b>Licenza:</b> Creative Commons Attribution 3.0 IT<br>
+📖 <b>Info confini:</b> <a href="https://www.istat.it/notizia/confini-delle-unita-amministrative-a-fini-statistici-al-1-gennaio-2018-2/">Confini delle unità amministrative a fini statistici</a><br><br>
 <i>I dati sono forniti dall'ISTAT e sono utilizzabili secondo i termini della licenza CC BY 3.0 IT.</i>
         """)
         info_text.setWordWrap(True)
@@ -338,7 +379,135 @@ class IstatConfiniDialog(QDialog):
         advanced_tab_layout.addStretch()
         
         advanced_tab.setLayout(advanced_tab_layout)
-        self.tab_widget.addTab(advanced_tab, "⚙️ Avanzate & Info")
+        self.tab_widget.addTab(advanced_tab, "⚙️ Avanzate e Info")
+        
+        # Tab dati aggiuntivi
+        additional_data_tab = QtWidgets.QWidget()
+        additional_data_layout = QVBoxLayout()
+        additional_data_layout.setSpacing(15)
+        additional_data_layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Sezione griglia popolazione
+        griglia_label = QLabel("📊 Dati aggiuntivi disponibili:")
+        griglia_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 10px; color: #34495e;")
+        additional_data_layout.addWidget(griglia_label)
+        
+        griglia_container = QtWidgets.QFrame()
+        griglia_container.setStyleSheet("""
+            QFrame {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                padding: 15px;
+            }
+        """)
+        griglia_layout = QVBoxLayout()
+        griglia_layout.setSpacing(10)
+        
+        # Checkbox per la griglia popolazione
+        self.griglia_pop_checkbox = QCheckBox("📊  Griglia di popolazione 2021 - Censimento (1 km²)")
+        self.griglia_pop_checkbox.setStyleSheet("""
+            QCheckBox {
+                font-size: 13px;
+                font-weight: bold;
+                padding: 8px;
+                color: #2c3e50;
+            }
+            QCheckBox::indicator {
+                width: 20px;
+                height: 20px;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #28a745;
+                border: 2px solid #1e7e34;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:unchecked {
+                background-color: white;
+                border: 2px solid #bdc3c7;
+                border-radius: 3px;
+            }
+        """)
+        self.griglia_pop_checkbox.setChecked(False)
+        
+        # Descrizione dettagliata
+        griglia_description = QLabel("""
+<b>Descrizione:</b><br>
+Distribuzione della popolazione legale del Censimento 2021 su griglia regolare europea (Eurostat) con celle di 1 km².<br><br>
+<b>Variabili censuarie disponibili (Reg. UE 1799/2018):</b><br>
+• Popolazione totale, maschile e femminile<br>
+• Popolazione per fasce di età (0-14, 15-64, oltre 65 anni)<br>
+• Popolazione per luogo di nascita (Italia, altro paese EU, extra-EU)<br>
+• Occupati<br>
+• Mobilità residenziale (stessa/altra dimora un anno prima)<br><br>
+<b>Caratteristiche della griglia:</b><br>
+• Celle uniformi facilmente confrontabili<br>
+• Griglia stabile nel tempo e compatibile con standard europei<br>
+• Aggregazione/suddivisione indipendente dai confini amministrativi<br><br>
+<b>Formato:</b> Shapefile in sistema di riferimento ETRS89 / LAEA Europe [EPSG:3035]<br>
+<b>Dimensione:</b> ~12 MB (compresso), ~250 MB (estratto)<br><br>
+<b>📖 Info:</b> <a href="https://www.istat.it/notizia/statistiche-sulla-popolazione-per-griglia-regolare/">Statistiche popolazione per griglia regolare</a><br>
+<b>📄 Metodologia:</b> <a href="https://www.istat.it/wp-content/uploads/2023/07/NotaMetodologicaGriglia2021-Ind.pdf">Nota metodologica (PDF)</a>
+        """)
+        griglia_description.setWordWrap(True)
+        griglia_description.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #495057;
+                line-height: 1.4;
+                background-color: #e8f4fd;
+                border: 1px solid #bee5eb;
+                border-radius: 6px;
+                padding: 12px;
+            }
+        """)
+        
+        griglia_layout.addWidget(self.griglia_pop_checkbox)
+        griglia_layout.addWidget(griglia_description)
+        
+        griglia_container.setLayout(griglia_layout)
+        additional_data_layout.addWidget(griglia_container)
+        
+        # Note importanti
+        note_label = QLabel("⚠️ Note importanti:")
+        note_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-top: 15px; color: #e74c3c;")
+        additional_data_layout.addWidget(note_label)
+        
+        note_container = QtWidgets.QFrame()
+        note_container.setStyleSheet("""
+            QFrame {
+                background-color: #fef9e7;
+                border: 1px solid #f6e05e;
+                border-radius: 8px;
+                padding: 12px;
+            }
+        """)
+        note_layout = QVBoxLayout()
+        
+        note_text = QLabel("""
+• La griglia di popolazione è un dataset separato dai confini amministrativi<br>
+• Il download avverrà solo se questa opzione è selezionata<br>
+• Il file verrà salvato nella stessa cartella di destinazione scelta nel tab principale<br>
+• È possibile scaricare sia i confini amministrativi che la griglia popolazione contemporaneamente
+        """)
+        note_text.setWordWrap(True)
+        note_text.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #8b5a2b;
+                line-height: 1.4;
+            }
+        """)
+        
+        note_layout.addWidget(note_text)
+        note_container.setLayout(note_layout)
+        additional_data_layout.addWidget(note_container)
+        
+        # Aggiunge spazio flessibile alla fine
+        additional_data_layout.addStretch()
+        
+        additional_data_tab.setLayout(additional_data_layout)
+        self.tab_widget.addTab(additional_data_tab, "📊 Griglia di popolazione 2021")
         
         main_layout.addWidget(self.tab_widget)
         
@@ -385,6 +554,9 @@ class IstatConfiniDialog(QDialog):
         # Connetti i segnali
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
+        
+        # Connetti segnale per aggiornare UI quando cambia selezione confine
+        self.radio_nessuno.toggled.connect(self.update_boundary_ui)
     
     def browse_output_folder(self):
         """Apre la finestra di dialogo per selezionare la cartella di output"""
@@ -398,7 +570,9 @@ class IstatConfiniDialog(QDialog):
 
     def get_selected_boundary(self):
         """Restituisce il tipo di confine selezionato"""
-        if self.radio_regioni.isChecked():
+        if self.radio_nessuno.isChecked():
+            return None
+        elif self.radio_regioni.isChecked():
             return "regioni"
         elif self.radio_province.isChecked():
             return "province"
@@ -419,3 +593,26 @@ class IstatConfiniDialog(QDialog):
     def should_open_folder(self):
         """Restituisce True se la cartella deve essere aperta al termine"""
         return self.open_folder_checkbox.isChecked()
+    
+    def should_download_griglia_pop(self):
+        """Restituisce True se la griglia popolazione deve essere scaricata"""
+        return self.griglia_pop_checkbox.isChecked()
+    
+    def should_delete_zip(self):
+        """Restituisce True se i file ZIP devono essere eliminati dopo l'estrazione"""
+        return self.delete_zip_checkbox.isChecked()
+    
+    def update_boundary_ui(self):
+        """Aggiorna l'interfaccia quando cambia la selezione del confine"""
+        is_no_boundary = self.radio_nessuno.isChecked()
+        
+        # Disabilita le opzioni di generalizzazione se non è selezionato nessun confine
+        self.radio_generalizzata.setEnabled(not is_no_boundary)
+        self.radio_non_generalizzata.setEnabled(not is_no_boundary)
+        
+        # Se non è selezionato nessun confine, suggerisci di selezionare la griglia
+        if is_no_boundary and not self.griglia_pop_checkbox.isChecked():
+            # Mostra un suggerimento visivo (cambia lo stile del tab)
+            self.tab_widget.setTabText(2, "📊 Griglia di popolazione 2021 ⚠️")
+        else:
+            self.tab_widget.setTabText(2, "📊 Griglia di popolazione 2021")

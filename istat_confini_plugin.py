@@ -250,11 +250,14 @@ class IstatConfiniPlugin:
         output_path = self.dlg.get_output_path()
         keep_files = self.dlg.should_keep_files()
         open_folder = self.dlg.should_open_folder()
+        download_griglia_pop = self.dlg.should_download_griglia_pop()
+        delete_zip = self.dlg.should_delete_zip()
         
-        if not selected_boundary:
+        # Verifica se almeno una opzione è selezionata
+        if not selected_boundary and not download_griglia_pop:
             QMessageBox.warning(self.iface.mainWindow(), 
                               "Attenzione", 
-                              "Seleziona un tipo di confine amministrativo.")
+                              "Seleziona almeno un tipo di dato da scaricare (confine amministrativo o griglia popolazione).")
             return
         
         if not output_path or not os.path.exists(output_path):
@@ -274,17 +277,8 @@ class IstatConfiniPlugin:
         if reply == QMessageBox.No:
             return
         
-        # Determina l'URL in base alla scelta
-        if is_generalized:
-            url = "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip"
-            suffix = "_generalizzata"
-        else:
-            url = "https://www.istat.it/storage/cartografia/confini_amministrativi/non_generalizzati/2025/Limiti01012025.zip"
-            suffix = "_completa"
-        
         # Crea una directory temporanea per il download
         self.temp_dir = tempfile.mkdtemp(prefix="istat_download_")
-        zip_path = os.path.join(self.temp_dir, "confini_istat.zip")
         
         # Salva le opzioni per usarle dopo il download
         self.user_options = {
@@ -292,49 +286,192 @@ class IstatConfiniPlugin:
             'output_path': output_path,
             'keep_files': keep_files,
             'open_folder': open_folder,
-            'suffix': suffix
+            'is_generalized': is_generalized,
+            'download_griglia_pop': download_griglia_pop,
+            'delete_zip': delete_zip
         }
         
+        # Lista dei download da effettuare
+        self.download_queue = []
+        
+        # Aggiungi confini amministrativi se selezionati
+        if selected_boundary:
+            if is_generalized:
+                url = "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip"
+                suffix = "_generalizzata"
+            else:
+                url = "https://www.istat.it/storage/cartografia/confini_amministrativi/non_generalizzati/2025/Limiti01012025.zip"
+                suffix = "_completa"
+            
+            zip_path = os.path.join(self.temp_dir, "confini_istat.zip")
+            self.download_queue.append({
+                'url': url,
+                'path': zip_path,
+                'type': 'confini',
+                'suffix': suffix
+            })
+        
+        # Aggiungi griglia popolazione se selezionata
+        if download_griglia_pop:
+            griglia_url = "https://www.istat.it/wp-content/uploads/2023/07/GrigliaPop2021_Ind_ITA.zip"
+            griglia_path = os.path.join(self.temp_dir, "griglia_pop_2021.zip")
+            self.download_queue.append({
+                'url': griglia_url,
+                'path': griglia_path,
+                'type': 'griglia_pop',
+                'suffix': '_2021'
+            })
+        
         # Mostra la dialog di progresso
-        self.progress_dialog = QProgressDialog("Download in corso...", "Annulla", 0, 100, self.iface.mainWindow())
+        total_downloads = len(self.download_queue)
+        self.progress_dialog = QProgressDialog(f"Preparazione download (0/{total_downloads})...", "Annulla", 0, 100, self.iface.mainWindow())
         self.progress_dialog.setWindowModality(Qt.WindowModal)
         self.progress_dialog.show()
         
-        # Avvia il download in un thread separato
-        self.download_thread = DownloadThread(url, zip_path)
+        # Inizia con il primo download
+        self.current_download_index = 0
+        self.start_next_download()
+
+    def start_next_download(self):
+        """Avvia il prossimo download nella coda"""
+        if self.current_download_index >= len(self.download_queue):
+            # Tutti i download completati, procedi con l'estrazione
+            self.extract_and_load_all()
+            return
+        
+        current_download = self.download_queue[self.current_download_index]
+        total_downloads = len(self.download_queue)
+        
+        # Aggiorna la label di progresso
+        if current_download['type'] == 'confini':
+            self.progress_dialog.setLabelText(f"Download confini amministrativi ({self.current_download_index + 1}/{total_downloads})...")
+        elif current_download['type'] == 'griglia_pop':
+            self.progress_dialog.setLabelText(f"Download griglia popolazione ({self.current_download_index + 1}/{total_downloads})...")
+        
+        # Avvia il download
+        self.download_thread = DownloadThread(current_download['url'], current_download['path'])
         self.download_thread.progress.connect(self.progress_dialog.setValue)
-        self.download_thread.finished.connect(self.extract_and_load)
+        self.download_thread.finished.connect(self.download_completed)
         self.download_thread.error.connect(self.download_error)
         self.download_thread.start()
+    
+    def download_completed(self, zip_path):
+        """Gestisce il completamento di un singolo download"""
+        self.current_download_index += 1
+        self.start_next_download()
 
     def download_error(self, error_msg):
         """Gestisce gli errori di download"""
         self.cleanup_temp_files()
         self.progress_dialog.close()
         
+        # Determina quale download è fallito
+        current_download = self.download_queue[self.current_download_index] if self.current_download_index < len(self.download_queue) else None
+        download_type = current_download['type'] if current_download else "sconosciuto"
+        
         # Messaggio più dettagliato per errori SSL
         if "SSL" in error_msg or "certificato" in error_msg.lower():
-            detailed_msg = f"{error_msg}\n\nIl server ISTAT potrebbe avere problemi con i certificati SSL.\nIl plugin ha tentato di scaricare ignorando la verifica SSL."
+            detailed_msg = f"Errore durante il download ({download_type}): {error_msg}\n\nIl server ISTAT potrebbe avere problemi con i certificati SSL.\nIl plugin ha tentato di scaricare ignorando la verifica SSL."
         else:
-            detailed_msg = f"Errore durante il download: {error_msg}"
+            detailed_msg = f"Errore durante il download ({download_type}): {error_msg}"
             
         QMessageBox.critical(self.iface.mainWindow(), 
                            "Errore", 
                            detailed_msg)
 
-    def extract_and_load(self, zip_path):
-        """Estrae i dati e carica il layer in QGIS"""
+    def extract_and_load_all(self):
+        """Estrae tutti i dati scaricati e li carica in QGIS"""
         try:
             self.progress_dialog.setLabelText("Estrazione in corso...")
             
-            # Recupera le opzioni utente
+            loaded_layers = []
+            created_folders = []
+            
+            # Processa ogni download completato
+            for download_info in self.download_queue:
+                if download_info['type'] == 'confini':
+                    layer = self.extract_and_load_confini(download_info)
+                    if layer:
+                        loaded_layers.append(layer)
+                        # Aggiungi la cartella alla lista se i file vengono mantenuti
+                        if self.user_options['keep_files']:
+                            boundary_type = self.user_options['boundary_type']
+                            suffix = download_info['suffix']
+                            final_folder_name = f"ISTAT_{boundary_type.capitalize()}_2025{suffix}"
+                            final_target_path = os.path.join(self.user_options['output_path'], final_folder_name)
+                            created_folders.append(final_target_path)
+                
+                elif download_info['type'] == 'griglia_pop':
+                    layer = self.extract_and_load_griglia_pop(download_info)
+                    if layer:
+                        loaded_layers.append(layer)
+                        # Aggiungi la cartella alla lista se i file vengono mantenuti
+                        if self.user_options['keep_files']:
+                            final_folder_name = "ISTAT_Griglia_Popolazione_2021"
+                            final_target_path = os.path.join(self.user_options['output_path'], final_folder_name)
+                            created_folders.append(final_target_path)
+            
+            # Pulizia file temporanei
+            self.cleanup_temp_files()
+            
+            # Chiudi la dialog di progresso
+            self.progress_dialog.close()
+            
+            # Messaggio di successo
+            if loaded_layers:
+                layer_names = [layer.name() for layer in loaded_layers]
+                if len(layer_names) == 1:
+                    message = f"Layer '{layer_names[0]}' caricato con successo!"
+                else:
+                    message = f"Layers caricati con successo:\n• " + "\n• ".join(layer_names)
+                
+                if self.user_options['keep_files'] and created_folders:
+                    message += f"\n\nFile salvati in:\n• " + "\n• ".join(created_folders)
+                    
+                    if not self.user_options['open_folder']:
+                        message += "\n\nVuoi aprire la cartella di destinazione?"
+                        reply = QMessageBox.question(
+                            self.iface.mainWindow(),
+                            "Successo",
+                            message,
+                            QMessageBox.Yes | QMessageBox.No,
+                            QMessageBox.No
+                        )
+                        if reply == QMessageBox.Yes:
+                            self.user_options['open_folder'] = True
+                else:
+                    QMessageBox.information(self.iface.mainWindow(), "Successo", message)
+                
+                # Apri la cartella se richiesto (apri la prima cartella nella lista)
+                if self.user_options['open_folder'] and self.user_options['keep_files'] and created_folders:
+                    self.open_folder_in_explorer(created_folders[0])
+                
+                # Log
+                for layer in loaded_layers:
+                    QgsMessageLog.logMessage(f"Layer ISTAT caricato: {layer.name()}", 
+                                           "IstatConfiniPlugin", Qgis.Info)
+            else:
+                QMessageBox.warning(self.iface.mainWindow(), "Attenzione", "Nessun layer è stato caricato.")
+                                   
+        except Exception as e:
+            self.cleanup_temp_files()
+            self.progress_dialog.close()
+            QMessageBox.critical(self.iface.mainWindow(), 
+                               "Errore", 
+                               f"Errore durante l'estrazione o il caricamento: {str(e)}")
+            QgsMessageLog.logMessage(f"Errore: {str(e)}", 
+                                   "IstatConfiniPlugin", Qgis.Critical)
+
+    def extract_and_load_confini(self, download_info):
+        """Estrae e carica i confini amministrativi"""
+        try:
+            zip_path = download_info['path']
+            suffix = download_info['suffix']
             boundary_type = self.user_options['boundary_type']
             output_path = self.user_options['output_path']
             keep_files = self.user_options['keep_files']
-            open_folder = self.user_options['open_folder']
-            suffix = self.user_options['suffix']
             
-            # Mapping dei tipi di confine alle cartelle (differente per generalizzata/non generalizzata)
+            # Mapping dei tipi di confine alle cartelle
             if suffix == "_generalizzata":
                 folder_mapping = {
                     "regioni": "Reg01012025_g",
@@ -359,106 +496,156 @@ class IstatConfiniPlugin:
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_temp_dir)
             
-            # Debug: elenca tutte le cartelle estratte
-            extracted_items = os.listdir(extract_temp_dir)
-            QgsMessageLog.logMessage(f"Cartelle estratte: {extracted_items}", "IstatConfiniPlugin", Qgis.Info)
-            
             # Trova la cartella specifica
             temp_target_path = os.path.join(extract_temp_dir, target_folder)
             if not os.path.exists(temp_target_path):
-                # Prova a trovare una cartella simile
+                extracted_items = os.listdir(extract_temp_dir)
                 similar_folders = [f for f in extracted_items if os.path.isdir(os.path.join(extract_temp_dir, f)) and boundary_type.lower() in f.lower()]
                 if similar_folders:
-                    error_msg = f"Cartella {target_folder} non trovata nell'archivio.\nCartelle disponibili: {extracted_items}\nCartelle simili trovate: {similar_folders}"
-                    QgsMessageLog.logMessage(error_msg, "IstatConfiniPlugin", Qgis.Warning)
-                    # Usa la prima cartella simile trovata
                     target_folder = similar_folders[0]
                     temp_target_path = os.path.join(extract_temp_dir, target_folder)
                     QgsMessageLog.logMessage(f"Uso cartella alternativa: {target_folder}", "IstatConfiniPlugin", Qgis.Info)
                 else:
                     raise Exception(f"Cartella {target_folder} non trovata nell'archivio.\nCartelle disponibili: {extracted_items}")
             
-            
-            # Crea la cartella di destinazione finale
-            final_folder_name = f"ISTAT_{boundary_type.capitalize()}_2025{suffix}"
-            final_target_path = os.path.join(output_path, final_folder_name)
-            
-            # Se la cartella esiste già, chiedi conferma
-            if os.path.exists(final_target_path):
-                reply = QMessageBox.question(
-                    self.iface.mainWindow(),
-                    "Cartella esistente",
-                    f"La cartella '{final_folder_name}' esiste già.\nVuoi sovrascriverla?",
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No
-                )
-                if reply == QMessageBox.No:
-                    self.cleanup_temp_files()
-                    self.progress_dialog.close()
-                    return
-                else:
-                    # Rimuovi la cartella esistente
+            # Crea la cartella di destinazione finale se necessario
+            if keep_files:
+                final_folder_name = f"ISTAT_{boundary_type.capitalize()}_2025{suffix}"
+                final_target_path = os.path.join(output_path, final_folder_name)
+                
+                if os.path.exists(final_target_path):
                     shutil.rmtree(final_target_path)
-            
-            # Copia la cartella estratta nella destinazione finale
-            shutil.copytree(temp_target_path, final_target_path)
+                
+                shutil.copytree(temp_target_path, final_target_path)
+                shp_search_path = final_target_path
+                
+                # Gestione file ZIP: copia o elimina in base alle preferenze utente
+                delete_zip = self.user_options.get('delete_zip', True)
+                if not delete_zip:
+                    # Copia il file ZIP nella cartella finale
+                    zip_filename = os.path.basename(zip_path)
+                    final_zip_path = os.path.join(final_target_path, zip_filename)
+                    shutil.copy2(zip_path, final_zip_path)
+                    QgsMessageLog.logMessage(f"File ZIP conservato: {final_zip_path}", "IstatConfiniPlugin", Qgis.Info)
+                else:
+                    # Elimina il file ZIP dalla cartella finale se presente
+                    zip_filename = os.path.basename(zip_path)
+                    final_zip_path = os.path.join(final_target_path, zip_filename)
+                    if os.path.exists(final_zip_path):
+                        os.remove(final_zip_path)
+                        QgsMessageLog.logMessage(f"File ZIP eliminato dalla cartella finale: {final_zip_path}", "IstatConfiniPlugin", Qgis.Info)
+                    
+                    # Elimina anche il file ZIP dalla directory temporanea
+                    if os.path.exists(zip_path):
+                        os.remove(zip_path)
+                        QgsMessageLog.logMessage(f"File ZIP eliminato dalla directory temporanea: {zip_path}", "IstatConfiniPlugin", Qgis.Info)
+            else:
+                shp_search_path = temp_target_path
             
             # Trova il file shapefile
-            shp_files = [f for f in os.listdir(final_target_path) if f.endswith('.shp')]
+            shp_files = [f for f in os.listdir(shp_search_path) if f.endswith('.shp')]
             if not shp_files:
                 raise Exception(f"Nessun file shapefile trovato in {target_folder}")
             
-            shp_path = os.path.join(final_target_path, shp_files[0])
+            shp_path = os.path.join(shp_search_path, shp_files[0])
             
             # Carica il layer in QGIS
             layer_name = f"ISTAT_{boundary_type.capitalize()}_2025{suffix}"
             layer = QgsVectorLayer(shp_path, layer_name, "ogr")
             
             if not layer.isValid():
-                raise Exception("Impossibile caricare il layer")
+                raise Exception("Impossibile caricare il layer dei confini amministrativi")
             
             QgsProject.instance().addMapLayer(layer)
+            return layer
             
-            # Pulizia file temporanei
-            self.cleanup_temp_files()
-            
-            # Chiudi la dialog di progresso
-            self.progress_dialog.close()
-            
-            # Messaggio di successo con informazioni sui file
-            if keep_files:
-                message = f"Layer '{layer_name}' caricato con successo!\n\nFile salvati in:\n{final_target_path}"
-                if not open_folder:
-                    message += "\n\nVuoi aprire la cartella di destinazione?"
-                    reply = QMessageBox.question(
-                        self.iface.mainWindow(),
-                        "Successo",
-                        message,
-                        QMessageBox.Yes | QMessageBox.No,
-                        QMessageBox.No
-                    )
-                    if reply == QMessageBox.Yes:
-                        open_folder = True
-            else:
-                message = f"Layer '{layer_name}' caricato con successo!"
-                QMessageBox.information(self.iface.mainWindow(), "Successo", message)
-            
-            # Apri la cartella se richiesto
-            if open_folder and keep_files:
-                self.open_folder_in_explorer(final_target_path)
-            
-            QgsMessageLog.logMessage(f"Layer ISTAT caricato: {layer_name} da {final_target_path}", 
-                                   "IstatConfiniPlugin", Qgis.Info)
-                                   
         except Exception as e:
-            self.cleanup_temp_files()
-            self.progress_dialog.close()
-            QMessageBox.critical(self.iface.mainWindow(), 
-                               "Errore", 
-                               f"Errore durante l'estrazione o il caricamento: {str(e)}")
-            QgsMessageLog.logMessage(f"Errore: {str(e)}", 
-                                   "IstatConfiniPlugin", Qgis.Critical)
-    
+            QgsMessageLog.logMessage(f"Errore estrazione confini: {str(e)}", "IstatConfiniPlugin", Qgis.Critical)
+            return None
+
+    def extract_and_load_griglia_pop(self, download_info):
+        """Estrae e carica la griglia popolazione"""
+        try:
+            zip_path = download_info['path']
+            output_path = self.user_options['output_path']
+            keep_files = self.user_options['keep_files']
+            
+            # Estrai il contenuto nella directory temporanea
+            extract_temp_dir = os.path.dirname(zip_path)
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_temp_dir)
+            
+            # Cerca file shapefile nella directory estratta (potrebbe essere in sottocartelle)
+            shp_files = []
+            for root, dirs, files in os.walk(extract_temp_dir):
+                for file in files:
+                    if file.endswith('.shp'):
+                        shp_files.append(os.path.join(root, file))
+            
+            if not shp_files:
+                raise Exception("Nessun file shapefile trovato nell'archivio della griglia popolazione")
+            
+            # Usa il primo shapefile trovato
+            shp_path = shp_files[0]
+            shp_dir = os.path.dirname(shp_path)
+            
+            # Crea la cartella di destinazione finale se necessario
+            if keep_files:
+                final_folder_name = "ISTAT_Griglia_Popolazione_2021"
+                final_target_path = os.path.join(output_path, final_folder_name)
+                
+                if os.path.exists(final_target_path):
+                    shutil.rmtree(final_target_path)
+                
+                # Copia tutti i file della griglia
+                shutil.copytree(shp_dir, final_target_path)
+                
+                # Gestione file ZIP: copia o elimina in base alle preferenze utente
+                delete_zip = self.user_options.get('delete_zip', True)
+                if not delete_zip:
+                    # Copia il file ZIP nella cartella finale
+                    zip_filename = os.path.basename(zip_path)
+                    final_zip_path = os.path.join(final_target_path, zip_filename)
+                    shutil.copy2(zip_path, final_zip_path)
+                    QgsMessageLog.logMessage(f"File ZIP griglia popolazione conservato: {final_zip_path}", "IstatConfiniPlugin", Qgis.Info)
+                else:
+                    # Elimina il file ZIP dalla cartella finale se presente
+                    zip_filename = os.path.basename(zip_path)
+                    final_zip_path = os.path.join(final_target_path, zip_filename)
+                    if os.path.exists(final_zip_path):
+                        os.remove(final_zip_path)
+                        QgsMessageLog.logMessage(f"File ZIP eliminato dalla cartella finale: {final_zip_path}", "IstatConfiniPlugin", Qgis.Info)
+                    
+                    # Elimina anche il file ZIP dalla directory temporanea
+                    if os.path.exists(zip_path):
+                        os.remove(zip_path)
+                        QgsMessageLog.logMessage(f"File ZIP eliminato dalla directory temporanea: {zip_path}", "IstatConfiniPlugin", Qgis.Info)
+                
+                # Aggiorna il percorso del shapefile
+                shp_filename = os.path.basename(shp_path)
+                shp_path = os.path.join(final_target_path, shp_filename)
+            else:
+                # keep_files=False: usa il file temporaneo ma elimina comunque il ZIP se richiesto
+                delete_zip = self.user_options.get('delete_zip', True)
+                if delete_zip:
+                    if os.path.exists(zip_path):
+                        os.remove(zip_path)
+                        QgsMessageLog.logMessage(f"File ZIP eliminato dalla directory temporanea: {zip_path}", "IstatConfiniPlugin", Qgis.Info)
+            
+            # Carica il layer in QGIS
+            layer_name = "ISTAT_Griglia_Popolazione_2021"
+            layer = QgsVectorLayer(shp_path, layer_name, "ogr")
+            
+            if not layer.isValid():
+                raise Exception("Impossibile caricare il layer della griglia popolazione")
+            
+            QgsProject.instance().addMapLayer(layer)
+            return layer
+            
+        except Exception as e:
+            QgsMessageLog.logMessage(f"Errore estrazione griglia popolazione: {str(e)}", "IstatConfiniPlugin", Qgis.Critical)
+            return None
+
     def cleanup_temp_files(self):
         """Pulisce i file temporanei"""
         try:
