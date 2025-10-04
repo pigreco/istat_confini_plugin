@@ -3,12 +3,12 @@
 /***************************************************************************
  IstatConfiniDialog
                                  A QGIS plugin
- Plugin per scaricare i confini amministrativi ISTAT
+ Plugin per scaricare i confini amministrativi ISTAT e griglia km popolazione 2021
                              -------------------
         begin                : 2025-01-01
         git sha              : $Format:%H$
         copyright            : (C) 2025
-        email                : tua@email.com
+        email                : pigrecoinfinito@gmail.com
  ***************************************************************************/
 
 /***************************************************************************

@@ -18,6 +18,12 @@ about=Questo plugin permette di scaricare direttamente i confini amministrativi 
     che non generalizzata. Include anche la griglia di popolazione del Censimento 2021 
     con 13 variabili censuarie secondo il Regolamento UE 1799/2018.
     I dati sono aggiornati al 1° gennaio 2025 e vengono scaricati direttamente dai server ISTAT.
+    EN:This plugin allows direct download of Italian administrative boundaries from the ISTAT website 
+    and the 2021 population grid on European standard (Eurostat). 
+    It supports regions, provinces, municipalities and geographical divisions in both generalized 
+    and non-generalized versions. It also includes the 2021 Census population grid 
+    with 13 census variables according to EU Regulation 1799/2018.
+    Data is updated to January 1st, 2025 and downloaded directly from ISTAT servers.
     
     Funzionalità principali:
     - Download automatico dei file ZIP da ISTAT
@@ -31,6 +37,20 @@ about=Questo plugin permette di scaricare direttamente i confini amministrativi 
     - Barra di progresso durante il download
     - Gestione errori integrata
     - Possibilità di scaricare solo griglia popolazione
+    
+  
+    Main features:
+    - Automatic download of ZIP files from ISTAT
+    - Selection between 4 types of administrative boundaries
+    - 2021 population grid (1 km² cells, EPSG:3035)
+    - Simultaneous multiple downloads (boundaries + grid)
+    - Option for generalized or detailed version
+    - Interface with 3 organized tabs
+    - Automatic loading in QGIS
+    - Fully Italian interface
+    - Progress bar during download
+    - Integrated error handling
+    - Option to download only population grid
 
 tracker=https://github.com/pigreco/istat_confini_plugin/issues
 repository=https://github.com/pigreco/istat_confini_plugin
