@@ -32,5 +32,5 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :type iface: QgsInterface
     """
     #
-    from .istat_confini_plugin import istat_confini_plugin
-    return istat_confini_plugin(iface)
+    from .istat_confini_plugin import IstatConfiniPlugin
+    return IstatConfiniPlugin(iface)

@@ -40,7 +40,7 @@ I dati sono aggiornati al 1° gennaio 2025 e vengono scaricati direttamente dai 
 4. Clicca su "Installa plugin"
 
 ### Installazione manuale
-1. Scarica il plugin dal [repository GitHub](https://github.com/tuousername/istat-confini-plugin)
+1. Scarica il plugin dal [repository GitHub](https://github.com/pigreco/istat_confini_plugin)
 2. Estrai il file ZIP nella cartella dei plugin di QGIS
 3. Riavvia QGIS
 4. Attiva il plugin dal menu Plugin
@@ -159,7 +159,7 @@ La griglia di popolazione può essere facilmente integrata con i confini amminis
 
 ### File non trovato
 - I link ISTAT potrebbero essere cambiati
-- Segnala il problema tramite [GitHub Issues](https://github.com/tuousername/istat-confini-plugin/issues)
+- Segnala il problema tramite [GitHub Issues](https://github.com/pigreco/istat_confini_plugin/issues)
 
 ### Plugin non visibile
 - Verifica che QGIS sia versione 3.0+
@@ -185,8 +185,8 @@ I contributi sono benvenuti! Per contribuire:
 ## Supporto
 
 - 📧 **Email**: pigrecoinfinito@gmail.com
-- 🐛 **Issues**: [GitHub Issues](https://github.com/tuousername/istat-confini-plugin/issues)  
-- 📖 **Repository**: [GitHub](https://github.com/tuousername/istat-confini-plugin)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/pigreco/istat_confini_plugin/issues)  
+- 📖 **Repository**: [GitHub](https://github.com/pigreco/istat_confini_plugin)
 
 ## Licenza
 
