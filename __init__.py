@@ -26,11 +26,11 @@
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
-    """Load IstatConfiniPlugin class from file IstatConfiniPlugin.
+    """Load IstatConfiniPlugin class from file istat_confini_plugin.
 
     :param iface: A QGIS interface instance.
     :type iface: QgsInterface
     """
     #
-    from .istat_confini_plugin import IstatConfiniPlugin
-    return IstatConfiniPlugin(iface)
+    from .istat_confini_plugin import istat_confini_plugin
+    return istat_confini_plugin(iface)
