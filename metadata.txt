@@ -52,6 +52,15 @@ about=Questo plugin permette di scaricare direttamente i confini amministrativi 
     - Progress bar during download
     - Integrated error handling
     - Option to download only population grid
+    
+    Requirements: Internet connection for downloading data from ISTAT servers.
+    The plugin uses QGIS native network manager (QgsNetworkAccessManager) which respects 
+    proxy settings and provides better integration with QGIS environment.
+    No external dependencies required - works with standard QGIS installation.
+    IT: Requisiti: Connessione internet per scaricare i dati dai server ISTAT.
+    Il plugin usa il gestore di rete nativo di QGIS (QgsNetworkAccessManager) che rispetta 
+    le impostazioni proxy e offre migliore integrazione con l'ambiente QGIS.
+    Nessuna dipendenza esterna richiesta - funziona con installazione standard di QGIS.
 
 tracker=https://github.com/pigreco/istat_confini_plugin/issues
 repository=https://github.com/pigreco/istat_confini_plugin

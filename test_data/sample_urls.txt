@@ -1,0 +1,30 @@
+# URL di Test per Connettività ISTAT
+
+## Confini Amministrativi 2025
+
+### Versione Generalizzata
+https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip
+
+### Versione Non Generalizzata  
+https://www.istat.it/storage/cartografia/confini_amministrativi/non_generalizzati/2025/Limiti01012025.zip
+
+## Griglia Popolazione 2021
+
+### Dataset Eurostat
+https://www.istat.it/wp-content/uploads/2023/07/GrigliaPop2021_Ind_ITA.zip
+
+## Test di Connettività
+
+Per testare la connettività, puoi utilizzare questi URL in un browser o con curl:
+
+```bash
+curl -I https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip
+```
+
+Il comando dovrebbe restituire un header HTTP 200 OK se il file è disponibile.
+
+## Note
+
+- Gli URL possono cambiare quando ISTAT aggiorna i dati
+- Il plugin tenta prima con verifica SSL, poi offre retry senza verifica se necessario
+- I download utilizzano QgsNetworkAccessManager per rispettare le impostazioni proxy di QGIS

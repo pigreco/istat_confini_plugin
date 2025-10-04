@@ -157,6 +157,12 @@ La griglia di popolazione può essere facilmente integrata con i confini amminis
 - Controlla proxy/firewall aziendali
 - Riprova più tardi (server ISTAT temporaneamente non disponibile)
 
+### Errore certificati SSL
+- Il plugin usa verifica SSL completa per default (sicurezza)
+- I server ISTAT hanno spesso certificati problematici
+- Se si verifica errore SSL, il plugin offre di riprovare senza verifica SSL
+- La disabilitazione SSL è temporanea e solo per i server ISTAT
+
 ### File non trovato
 - I link ISTAT potrebbero essere cambiati
 - Segnala il problema tramite [GitHub Issues](https://github.com/pigreco/istat_confini_plugin/issues)

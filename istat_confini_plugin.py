@@ -24,57 +24,108 @@
 import os
 import tempfile
 import zipfile
-import requests
 import shutil
 import subprocess
 import platform
-import urllib3
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QThread, pyqtSignal
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QThread, pyqtSignal, QUrl, QEventLoop
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QProgressDialog
-from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis
+from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply, QSslConfiguration
+from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsNetworkAccessManager
 from .istat_confini_dialog import IstatConfiniDialog
-
-# Disabilita gli avvisi SSL
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class DownloadThread(QThread):
     progress = pyqtSignal(int)
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
     
-    def __init__(self, url, output_path):
+    def __init__(self, url, output_path, ignore_ssl_errors=False):
         super().__init__()
         self.url = url
         self.output_path = output_path
+        self.ignore_ssl_errors = ignore_ssl_errors
+        self.network_manager = QgsNetworkAccessManager.instance()
+        self.reply = None
+        self.output_file = None
+        self.downloaded = 0
+        self.total_size = 0
     
     def run(self):
         try:
-            # Ignora la verifica SSL per gestire certificati scaduti
-            response = requests.get(self.url, stream=True, verify=False, timeout=30)
-            response.raise_for_status()
+            # Crea la richiesta con QgsNetworkAccessManager
+            request = QNetworkRequest(QUrl(self.url))
+            request.setRawHeader(b'User-Agent', b'QGIS ISTAT Plugin')
             
-            total_size = int(response.headers.get('content-length', 0))
-            downloaded = 0
+            # Configura SSL se richiesto
+            if self.ignore_ssl_errors:
+                ssl_config = QSslConfiguration.defaultConfiguration()
+                ssl_config.setPeerVerifyMode(QSslConfiguration.VerifyNone)
+                request.setSslConfiguration(ssl_config)
+                QgsMessageLog.logMessage("SSL verification disabled for ISTAT server compatibility", 
+                                       "IstatConfiniPlugin", Qgis.Warning)
             
-            with open(self.output_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if total_size > 0:
-                            progress_percent = int((downloaded / total_size) * 100)
-                            self.progress.emit(progress_percent)
+            # Avvia il download
+            self.reply = self.network_manager.get(request)
             
-            self.finished.emit(self.output_path)
-        except requests.exceptions.SSLError as e:
-            # Gestione specifica per errori SSL
-            self.error.emit(f"Errore SSL (certificato potenzialmente scaduto): {str(e)}")
-        except requests.exceptions.RequestException as e:
-            # Altri errori di rete
-            self.error.emit(f"Errore di rete: {str(e)}")
+            # Ignora errori SSL se richiesto
+            if self.ignore_ssl_errors:
+                self.reply.sslErrors.connect(lambda errors: self.reply.ignoreSslErrors())
+            
+            # Connetti i segnali
+            self.reply.downloadProgress.connect(self.on_download_progress)
+            self.reply.finished.connect(self.on_finished)
+            self.reply.readyRead.connect(self.on_ready_read)
+            self.reply.error.connect(self.on_error)
+            
+            # Apri il file di output
+            self.output_file = open(self.output_path, 'wb')
+            
+            # Avvia il loop degli eventi
+            loop = QEventLoop()
+            self.reply.finished.connect(loop.quit)
+            loop.exec_()
+            
         except Exception as e:
-            self.error.emit(str(e))
+            self.error.emit(f"Errore durante il download: {str(e)}")
+            
+    def on_download_progress(self, bytes_received, bytes_total):
+        """Gestisce il progresso del download"""
+        if bytes_total > 0:
+            progress_percent = int((bytes_received / bytes_total) * 100)
+            self.progress.emit(progress_percent)
+            
+    def on_ready_read(self):
+        """Legge i dati disponibili e li scrive nel file"""
+        if self.output_file and self.reply:
+            data = self.reply.readAll()
+            self.output_file.write(data.data())
+            
+    def on_finished(self):
+        """Gestisce il completamento del download"""
+        try:
+            if self.output_file:
+                self.output_file.close()
+                self.output_file = None
+                
+            if self.reply and self.reply.error() == QNetworkReply.NoError:
+                self.finished.emit(self.output_path)
+            elif self.reply:
+                error_msg = self.reply.errorString()
+                self.error.emit(f"Errore di rete: {error_msg}")
+                
+        except Exception as e:
+            self.error.emit(f"Errore durante il salvataggio: {str(e)}")
+            
+    def on_error(self, error):
+        """Gestisce gli errori di rete"""
+        if self.reply:
+            error_msg = self.reply.errorString()
+            if "SSL" in error_msg or "certificate" in error_msg.lower():
+                self.error.emit(f"Errore SSL (certificato potenzialmente scaduto): {error_msg}")
+            else:
+                self.error.emit(f"Errore di rete: {error_msg}")
+        else:
+            self.error.emit(f"Errore di rete sconosciuto: {error}")
 
 
 class IstatConfiniPlugin:
@@ -269,8 +320,11 @@ class IstatConfiniPlugin:
         # Mostra avviso per SSL
         reply = QMessageBox.question(
             self.iface.mainWindow(),
-            "Avviso Sicurezza",
-            "Il download ignorerà la verifica dei certificati SSL per gestire eventuali certificati scaduti del server ISTAT.\nVuoi continuare?",
+            "Configurazione SSL",
+            "I server ISTAT possono avere certificati SSL problematici.\n\n"
+            "Il plugin proverà prima con verifica SSL completa, e in caso di errore "
+            "richiederà se disabilitare la verifica SSL temporaneamente.\n\n"
+            "Vuoi continuare con il download?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.Yes
         )
@@ -290,6 +344,9 @@ class IstatConfiniPlugin:
             'download_griglia_pop': download_griglia_pop,
             'delete_zip': delete_zip
         }
+        
+        # Opzioni SSL - prova prima con verifica, poi senza se necessario
+        self.ssl_retry_mode = False
         
         # Lista dei download da effettuare
         self.download_queue = []
@@ -348,8 +405,12 @@ class IstatConfiniPlugin:
         elif current_download['type'] == 'griglia_pop':
             self.progress_dialog.setLabelText(f"Download griglia popolazione ({self.current_download_index + 1}/{total_downloads})...")
         
-        # Avvia il download
-        self.download_thread = DownloadThread(current_download['url'], current_download['path'])
+        # Avvia il download con opzioni SSL
+        self.download_thread = DownloadThread(
+            current_download['url'], 
+            current_download['path'], 
+            ignore_ssl_errors=self.ssl_retry_mode
+        )
         self.download_thread.progress.connect(self.progress_dialog.setValue)
         self.download_thread.finished.connect(self.download_completed)
         self.download_thread.error.connect(self.download_error)
@@ -361,22 +422,47 @@ class IstatConfiniPlugin:
         self.start_next_download()
 
     def download_error(self, error_msg):
-        """Gestisce gli errori di download"""
-        self.cleanup_temp_files()
-        self.progress_dialog.close()
-        
+        """Gestisce gli errori di download con retry SSL"""
         # Determina quale download è fallito
         current_download = self.download_queue[self.current_download_index] if self.current_download_index < len(self.download_queue) else None
         download_type = current_download['type'] if current_download else "sconosciuto"
         
-        # Messaggio più dettagliato per errori SSL
-        if "SSL" in error_msg or "certificato" in error_msg.lower():
-            detailed_msg = f"Errore durante il download ({download_type}): {error_msg}\n\nIl server ISTAT potrebbe avere problemi con i certificati SSL.\nIl plugin ha tentato di scaricare ignorando la verifica SSL."
+        # Se è un errore SSL e non abbiamo ancora provato senza verifica SSL
+        if ("SSL" in error_msg or "certificate" in error_msg.lower() or "certificato" in error_msg.lower()) and not self.ssl_retry_mode:
+            # Chiedi all'utente se vuole riprovare senza verifica SSL
+            reply = QMessageBox.question(
+                self.iface.mainWindow(),
+                "Errore certificato SSL",
+                f"Errore SSL durante il download ({download_type}):\n{error_msg}\n\n"
+                "I server ISTAT hanno spesso certificati SSL problematici.\n"
+                "Vuoi riprovare disabilitando temporaneamente la verifica SSL?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            
+            if reply == QMessageBox.Yes:
+                # Abilita modalità SSL disabilitato e riprova
+                self.ssl_retry_mode = True
+                QgsMessageLog.logMessage("Retry download con SSL disabilitato per compatibilità server ISTAT", 
+                                       "IstatConfiniPlugin", Qgis.Info)
+                
+                # Riavvia il download corrente
+                self.start_next_download()
+                return
+        
+        # Se non è un errore SSL o l'utente ha rifiutato il retry, mostra errore finale
+        self.cleanup_temp_files()
+        self.progress_dialog.close()
+        
+        if "SSL" in error_msg or "certificate" in error_msg.lower() or "certificato" in error_msg.lower():
+            detailed_msg = f"Errore SSL durante il download ({download_type}): {error_msg}\n\n" \
+                         f"Il server ISTAT ha problemi con i certificati SSL. " \
+                         f"Verifica la connessione internet e riprova."
         else:
             detailed_msg = f"Errore durante il download ({download_type}): {error_msg}"
             
         QMessageBox.critical(self.iface.mainWindow(), 
-                           "Errore", 
+                           "Errore Download", 
                            detailed_msg)
 
     def extract_and_load_all(self):
