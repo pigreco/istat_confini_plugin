@@ -6,7 +6,7 @@ Plugin QGIS per scaricare e caricare automaticamente i confini amministrativi it
 
 Questo plugin permette di scaricare direttamente i confini amministrativi italiani dal sito ISTAT e caricarli automaticamente in QGIS. Supporta regioni, province, comuni e ripartizioni geografiche sia in versione generalizzata che non generalizzata.
 
-I dati sono aggiornati al 1° gennaio 2025 e vengono scaricati direttamente dai server ISTAT.
+I dati sono disponibili per gli anni 2022-2026 (selezionabili dall'interfaccia) e vengono scaricati direttamente dai server ISTAT.
 
 ![](GUI.png)
 
@@ -28,7 +28,7 @@ I dati sono aggiornati al 1° gennaio 2025 e vengono scaricati direttamente dai 
 
 ## Requisiti
 
-- **QGIS**: versione 3.0 o superiore
+- **QGIS**: versione 3.16 o superiore (incluso QGIS 4.x)
 - **Connessione internet**: necessaria per il download dei dati
 
 ## Installazione
@@ -51,13 +51,14 @@ I dati sono aggiornati al 1° gennaio 2025 e vengono scaricati direttamente dai 
    - Toolbar: clicca sull'icona del plugin
    - Menu: `Plugin → Confini Amministrativi ISTAT`
 
-2. **�️ Tab Confini Amministrativi - Seleziona i dati da scaricare**:
+2. **🗺️ Tab Confini Amministrativi - Seleziona i dati da scaricare**:
    - **Confini amministrativi (opzionale)**:
      - Nessun confine (solo dati aggiuntivi)
      - Regioni
-     - Province  
+     - Province
      - Comuni
      - Ripartizioni geografiche
+   - **Anno di riferimento**: seleziona l'anno dei dati (2022-2026, default 2026)
    - Scegli la versione (generalizzata o non generalizzata) se scarichi confini
    - Seleziona la cartella di destinazione
 
@@ -184,7 +185,7 @@ I contributi sono benvenuti! Per contribuire:
 5. Invia una Pull Request
 
 ### Test
-- Testato su QGIS 3.16-3.40
+- Testato su QGIS 3.16-3.40 e QGIS 4.x
 - Compatibile Windows, Linux, macOS
 - Testato con tutti i tipi di confini ISTAT
 
@@ -200,12 +201,24 @@ Questo plugin è rilasciato sotto licenza open source. Vedi il file LICENSE per 
 
 ## Changelog
 
-### v1.1.0 (2025) ✨ **AGGIORNAMENTO MAGGIORE**
-- 📊 **NUOVO**: Tab "Griglia di popolazione 2021" per dataset demografici ISTAT  
+### v1.3.0 (2026)
+- 📅 **NUOVO**: Selezione anno di riferimento 2022-2026 (default 2026)
+- 🔗 URL di download parametrizzate per anno (dati al 1° gennaio dell'anno scelto)
+- 🎨 Interfaccia tema scuro: stylesheet con `palette()` Qt per compatibilità QGIS 4 / Win11
+- 🔧 Fix download bloccato su QGIS 4.x: `QgsBlockingNetworkRequest` al posto di `QEventLoop+QThread`
+- 🔧 Fix Qt6: segnale `QNetworkReply.errorOccurred` (rinominato da `error`)
+
+### v1.2.0 (2025)
+- ⚙️ Porting QGIS 4.x / Qt6 / PyQt6
+- `exec_()` → `exec()`, enum Qt qualificati, costanti try/except per retrocompatibilità QGIS 3.16+
+- `qgisMinimumVersion=3.16`, `qgisMaximumVersion=4.99`, `supportsQt6=True`
+
+### v1.1.0 (2025)
+- 📊 **NUOVO**: Tab "Griglia di popolazione 2021" per dataset demografici ISTAT
 - 🔄 **NUOVO**: Download multipli simultanei (confini + griglia popolazione)
 - ❌ **NUOVO**: Opzione "Nessun confine" per scaricare solo griglia popolazione
-- �️ **NUOVO**: Opzione "Elimina file ZIP" per risparmiare spazio su disco
-- �📈 **NUOVO**: Griglia popolazione Censimento 2021 su standard europeo (Eurostat)
+- 🗑️ **NUOVO**: Opzione "Elimina file ZIP" per risparmiare spazio su disco
+- 📈 **NUOVO**: Griglia popolazione Censimento 2021 su standard europeo (Eurostat)
 - 🇪🇺 **NUOVO**: 13 variabili censuarie secondo Regolamento UE 1799/2018
 - 🎯 Interfaccia migliorata con 3 tab organizzati e UI dinamica
 - ⚡ Sistema di download in coda ottimizzato
@@ -214,7 +227,7 @@ Questo plugin è rilasciato sotto licenza open source. Vedi il file LICENSE per 
 
 ### v1.0.0 (2025)
 - ✨ Prima release del plugin
-- 🔄 Download automatico confini ISTAT 2025
+- 🔄 Download automatico confini ISTAT
 - 🗺️ Supporto per tutti i livelli amministrativi italiani
 - ⚙️ Opzione generalizzata/non generalizzata
 - 🇮🇹 Interfaccia utente intuitiva in italiano
