@@ -216,6 +216,22 @@ class IstatConfiniDialog(QDialog):
             gen_layout.addWidget(radio)
 
         self.radio_generalizzata.setChecked(True)
+
+        # Anno di riferimento — dentro il gruppo Livello di dettaglio
+        year_row = QHBoxLayout()
+        year_row.setSpacing(8)
+        year_row.addWidget(QLabel("📅 Anno:"))
+        self.year_combo = QComboBox()
+        for y in range(2022, 2027):
+            self.year_combo.addItem(str(y))
+        self.year_combo.setCurrentText("2026")
+        self.year_combo.setStyleSheet("QComboBox { padding: 3px 8px; font-size: 13px; }")
+        self.year_combo.setMaximumWidth(90)
+        year_row.addWidget(self.year_combo)
+        year_row.addWidget(QLabel("(1° gennaio dell'anno selezionato)"))
+        year_row.addStretch()
+        gen_layout.addLayout(year_row)
+
         gen_container.setLayout(gen_layout)
         main_tab_layout.addWidget(gen_container)
 
