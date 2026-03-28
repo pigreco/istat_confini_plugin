@@ -47,6 +47,7 @@ except AttributeError:
 # Nessun background-color / color hardcoded: eredita dalla palette del tema.
 _STYLE_FRAME = """
     QFrame {
+        background-color: palette(alternateBase);
         border: 1px solid palette(mid);
         border-radius: 8px;
         padding: 6px;
@@ -54,12 +55,13 @@ _STYLE_FRAME = """
 """
 _STYLE_FRAME_ACCENT = """
     QFrame {
+        background-color: palette(alternateBase);
         border: 1px solid palette(mid);
         border-radius: 8px;
         padding: 10px;
     }
 """
-_STYLE_LABEL_SECTION = "font-weight: bold; font-size: 14px; margin-top: 10px;"
+_STYLE_LABEL_SECTION = "font-weight: bold; font-size: 14px; margin-top: 8px;"
 _STYLE_LABEL_TITLE = "font-weight: bold; font-size: 15px; padding-bottom: 8px; border-bottom: 2px solid palette(highlight);"
 _STYLE_RADIO = "QRadioButton { font-size: 13px; padding: 4px; }"
 _STYLE_CHECKBOX = "QCheckBox { font-size: 13px; padding: 4px; }"
@@ -68,16 +70,8 @@ _STYLE_NOTE = """
         font-size: 11px;
         font-style: italic;
         padding: 6px 8px;
+        background-color: palette(alternateBase);
         border-left: 3px solid palette(highlight);
-        border-radius: 3px;
-    }
-"""
-_STYLE_NOTE_WARNING = """
-    QLabel {
-        font-size: 11px;
-        font-style: italic;
-        padding: 6px 8px;
-        border-left: 3px solid palette(mid);
         border-radius: 3px;
     }
 """
@@ -112,18 +106,26 @@ class IstatConfiniDialog(QDialog):
             QTabWidget::pane {
                 border: 1px solid palette(mid);
                 border-radius: 6px;
+                background-color: palette(window);
             }
             QTabBar::tab {
-                padding: 7px 14px;
-                margin-right: 2px;
+                background-color: palette(button);
+                color: palette(buttonText);
+                padding: 7px 16px;
+                margin-right: 3px;
                 border: 1px solid palette(mid);
                 border-bottom: none;
                 border-top-left-radius: 5px;
                 border-top-right-radius: 5px;
             }
             QTabBar::tab:selected {
-                border-bottom: 1px solid palette(window);
+                background-color: palette(window);
+                color: palette(windowText);
                 font-weight: bold;
+                border-bottom: 2px solid palette(highlight);
+            }
+            QTabBar::tab:hover:!selected {
+                background-color: palette(midlight);
             }
         """)
 
@@ -331,7 +333,7 @@ Distribuzione della popolazione legale del Censimento 2021 su griglia regolare e
 <b>📄 Metodologia:</b> <a href="https://www.istat.it/wp-content/uploads/2023/07/NotaMetodologicaGriglia2021-Ind.pdf">Nota metodologica (PDF)</a>
         """)
         griglia_description.setWordWrap(True)
-        griglia_description.setStyleSheet("font-size: 12px; padding: 8px; border: 1px solid palette(mid); border-radius: 5px;")
+        griglia_description.setStyleSheet("font-size: 12px; padding: 8px; background-color: palette(alternateBase); border: 1px solid palette(mid); border-radius: 5px;")
         griglia_description.setOpenExternalLinks(True)
 
         griglia_layout.addWidget(self.griglia_pop_checkbox)
