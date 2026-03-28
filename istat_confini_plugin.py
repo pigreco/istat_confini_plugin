@@ -27,11 +27,12 @@ import zipfile
 import shutil
 import subprocess
 import platform
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QThread, pyqtSignal, QUrl, QEventLoop
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QThread, pyqtSignal, QUrl
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox, QProgressDialog
-from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply, QSslConfiguration
-from qgis.core import QgsProject, QgsVectorLayer, QgsMessageLog, Qgis, QgsNetworkAccessManager
+from qgis.PyQt.QtNetwork import QNetworkRequest, QSslConfiguration
+from qgis.core import (QgsProject, QgsVectorLayer, QgsMessageLog, Qgis,
+                        QgsNetworkAccessManager, QgsBlockingNetworkRequest)
 from .istat_confini_dialog import IstatConfiniDialog
 
 # ---------------------------------------------------------------------------
@@ -45,11 +46,6 @@ except AttributeError:
     _MSG_INFO = Qgis.Info          # type: ignore[attr-defined]
     _MSG_WARNING = Qgis.Warning    # type: ignore[attr-defined]
     _MSG_CRITICAL = Qgis.Critical  # type: ignore[attr-defined]
-
-try:
-    _NET_NO_ERROR = QNetworkReply.NetworkError.NoError
-except AttributeError:
-    _NET_NO_ERROR = QNetworkReply.NoError  # type: ignore[attr-defined]
 
 try:
     _WIN_MODAL = Qt.WindowModality.WindowModal
@@ -68,10 +64,21 @@ try:
     _VERIFY_NONE = QSslSocket.PeerVerifyMode.VerifyNone  # Qt6
 except (ImportError, AttributeError):
     _VERIFY_NONE = QSslConfiguration.VerifyNone  # type: ignore[attr-defined]  # Qt5
+
+try:
+    _BNR_NO_ERROR = QgsBlockingNetworkRequest.ErrorCode.NoError
+except AttributeError:
+    _BNR_NO_ERROR = QgsBlockingNetworkRequest.NoError  # type: ignore[attr-defined]
 # ---------------------------------------------------------------------------
 
 
 class DownloadThread(QThread):
+    """Scarica un file in un thread separato usando QgsBlockingNetworkRequest.
+
+    QgsBlockingNetworkRequest è l'API raccomandata per QGIS 4.x / Qt6:
+    gestisce internamente l'event loop del thread, rispetta le impostazioni
+    proxy di QGIS ed è compatibile con QGIS 3.6+.
+    """
     progress = pyqtSignal(int)
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
@@ -81,92 +88,43 @@ class DownloadThread(QThread):
         self.url = url
         self.output_path = output_path
         self.ignore_ssl_errors = ignore_ssl_errors
-        self.network_manager = QgsNetworkAccessManager.instance()
-        self.reply = None
-        self.output_file = None
-        self.downloaded = 0
-        self.total_size = 0
 
     def run(self):
         try:
-            # Crea la richiesta con QgsNetworkAccessManager
-            request = QNetworkRequest(QUrl(self.url))
-            request.setRawHeader(b'User-Agent', b'QGIS ISTAT Plugin')
+            net_request = QNetworkRequest(QUrl(self.url))
+            net_request.setRawHeader(b'User-Agent', b'QGIS ISTAT Plugin')
 
-            # Configura SSL se richiesto
             if self.ignore_ssl_errors:
                 ssl_config = QSslConfiguration.defaultConfiguration()
                 ssl_config.setPeerVerifyMode(_VERIFY_NONE)
-                request.setSslConfiguration(ssl_config)
-                QgsMessageLog.logMessage("SSL verification disabled for ISTAT server compatibility",
-                                       "IstatConfiniPlugin", _MSG_WARNING)
+                net_request.setSslConfiguration(ssl_config)
+                QgsMessageLog.logMessage(
+                    "SSL verification disabled for ISTAT server compatibility",
+                    "IstatConfiniPlugin", _MSG_WARNING)
 
-            # Avvia il download
-            self.reply = self.network_manager.get(request)
+            req = QgsBlockingNetworkRequest()
+            req.downloadProgress.connect(self._on_progress)
 
-            # Ignora errori SSL se richiesto
-            if self.ignore_ssl_errors:
-                self.reply.sslErrors.connect(lambda errors: self.reply.ignoreSslErrors())
+            err = req.get(net_request, forceRefresh=True)
 
-            # Connetti i segnali
-            self.reply.downloadProgress.connect(self.on_download_progress)
-            self.reply.finished.connect(self.on_finished)
-            self.reply.readyRead.connect(self.on_ready_read)
-            # Qt6: error() è solo un metodo, il segnale si chiama errorOccurred
-            if hasattr(self.reply, 'errorOccurred'):
-                self.reply.errorOccurred.connect(self.on_error)
+            if err == _BNR_NO_ERROR:
+                content = bytes(req.reply().content())
+                with open(self.output_path, 'wb') as f:
+                    f.write(content)
+                self.finished.emit(self.output_path)
             else:
-                self.reply.error.connect(self.on_error)  # type: ignore[attr-defined]
-
-            # Apri il file di output
-            self.output_file = open(self.output_path, 'wb')
-
-            # Avvia il loop degli eventi
-            loop = QEventLoop()
-            self.reply.finished.connect(loop.quit)
-            loop.exec()
+                error_msg = req.errorMessage()
+                if "SSL" in error_msg or "certificate" in error_msg.lower():
+                    self.error.emit(f"Errore SSL (certificato potenzialmente scaduto): {error_msg}")
+                else:
+                    self.error.emit(f"Errore di rete: {error_msg}")
 
         except Exception as e:
             self.error.emit(f"Errore durante il download: {str(e)}")
 
-    def on_download_progress(self, bytes_received, bytes_total):
-        """Gestisce il progresso del download"""
+    def _on_progress(self, bytes_received, bytes_total):
         if bytes_total > 0:
-            progress_percent = int((bytes_received / bytes_total) * 100)
-            self.progress.emit(progress_percent)
-
-    def on_ready_read(self):
-        """Legge i dati disponibili e li scrive nel file"""
-        if self.output_file and self.reply:
-            data = self.reply.readAll()
-            self.output_file.write(data.data())
-
-    def on_finished(self):
-        """Gestisce il completamento del download"""
-        try:
-            if self.output_file:
-                self.output_file.close()
-                self.output_file = None
-
-            if self.reply and self.reply.error() == _NET_NO_ERROR:
-                self.finished.emit(self.output_path)
-            elif self.reply:
-                error_msg = self.reply.errorString()
-                self.error.emit(f"Errore di rete: {error_msg}")
-
-        except Exception as e:
-            self.error.emit(f"Errore durante il salvataggio: {str(e)}")
-
-    def on_error(self, error):
-        """Gestisce gli errori di rete"""
-        if self.reply:
-            error_msg = self.reply.errorString()
-            if "SSL" in error_msg or "certificate" in error_msg.lower():
-                self.error.emit(f"Errore SSL (certificato potenzialmente scaduto): {error_msg}")
-            else:
-                self.error.emit(f"Errore di rete: {error_msg}")
-        else:
-            self.error.emit(f"Errore di rete sconosciuto: {error}")
+            self.progress.emit(int(bytes_received / bytes_total * 100))
 
 
 class IstatConfiniPlugin:
