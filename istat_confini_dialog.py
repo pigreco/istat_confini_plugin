@@ -25,7 +25,8 @@ import os
 from qgis.PyQt import QtCore, QtGui, QtWidgets
 from qgis.PyQt.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QRadioButton,
                                 QCheckBox, QPushButton, QLabel, QButtonGroup,
-                                QLineEdit, QFileDialog, QGroupBox, QTabWidget)
+                                QLineEdit, QFileDialog, QGroupBox, QTabWidget,
+                                QComboBox)
 
 # ---------------------------------------------------------------------------
 # Costanti di compatibilità Qt5/Qt6 (PyQt5 / PyQt6)
@@ -141,6 +142,32 @@ class IstatConfiniDialog(QDialog):
         info_note.setStyleSheet(_STYLE_NOTE)
         info_note.setWordWrap(True)
         main_tab_layout.addWidget(info_note)
+
+        # Sezione anno di riferimento
+        year_label = QLabel("📅 Anno di riferimento:")
+        year_label.setStyleSheet(_STYLE_LABEL_SECTION)
+        main_tab_layout.addWidget(year_label)
+
+        year_container = QtWidgets.QFrame()
+        year_container.setStyleSheet(_STYLE_FRAME)
+        year_layout = QHBoxLayout()
+        year_layout.setSpacing(10)
+
+        self.year_combo = QComboBox()
+        for y in range(2022, 2027):
+            self.year_combo.addItem(str(y))
+        self.year_combo.setCurrentText("2026")
+        self.year_combo.setStyleSheet("QComboBox { padding: 4px 8px; font-size: 13px; }")
+        self.year_combo.setMaximumWidth(100)
+
+        year_note = QLabel("Anno dei dati ISTAT (1° gennaio dell'anno selezionato)")
+        year_note.setStyleSheet("font-size: 12px; font-style: italic;")
+
+        year_layout.addWidget(self.year_combo)
+        year_layout.addWidget(year_note)
+        year_layout.addStretch()
+        year_container.setLayout(year_layout)
+        main_tab_layout.addWidget(year_container)
 
         # Sezione tipo di confine
         boundary_label = QLabel("🗺️ Tipo di confine amministrativo (opzionale):")
@@ -403,6 +430,10 @@ Distribuzione della popolazione legale del Censimento 2021 su griglia regolare e
         elif self.radio_ripartizioni.isChecked():
             return "ripartizioni"
         return None
+
+    def get_selected_year(self):
+        """Restituisce l'anno selezionato come stringa (es. '2025')"""
+        return self.year_combo.currentText()
 
     def get_output_path(self):
         return self.output_path_edit.text()

@@ -297,6 +297,7 @@ class IstatConfiniPlugin:
         # Ottieni le selezioni dell'utente
         is_generalized = self.dlg.radio_generalizzata.isChecked()
         selected_boundary = self.dlg.get_selected_boundary()
+        selected_year = self.dlg.get_selected_year()
         output_path = self.dlg.get_output_path()
         keep_files = self.dlg.should_keep_files()
         open_folder = self.dlg.should_open_folder()
@@ -336,6 +337,7 @@ class IstatConfiniPlugin:
         # Salva le opzioni per usarle dopo il download
         self.user_options = {
             'boundary_type': selected_boundary,
+            'year': selected_year,
             'output_path': output_path,
             'keep_files': keep_files,
             'open_folder': open_folder,
@@ -353,10 +355,12 @@ class IstatConfiniPlugin:
         # Aggiungi confini amministrativi se selezionati
         if selected_boundary:
             if is_generalized:
-                url = "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip"
+                url = (f"https://www.istat.it/storage/cartografia/confini_amministrativi"
+                       f"/generalizzati/{selected_year}/Limiti0101{selected_year}_g.zip")
                 suffix = "_generalizzata"
             else:
-                url = "https://www.istat.it/storage/cartografia/confini_amministrativi/non_generalizzati/2025/Limiti01012025.zip"
+                url = (f"https://www.istat.it/storage/cartografia/confini_amministrativi"
+                       f"/non_generalizzati/{selected_year}/Limiti0101{selected_year}.zip")
                 suffix = "_completa"
 
             zip_path = os.path.join(self.temp_dir, "confini_istat.zip")
@@ -482,7 +486,8 @@ class IstatConfiniPlugin:
                         if self.user_options['keep_files']:
                             boundary_type = self.user_options['boundary_type']
                             suffix = download_info['suffix']
-                            final_folder_name = f"ISTAT_{boundary_type.capitalize()}_2025{suffix}"
+                            year = self.user_options['year']
+                            final_folder_name = f"ISTAT_{boundary_type.capitalize()}_{year}{suffix}"
                             final_target_path = os.path.join(self.user_options['output_path'], final_folder_name)
                             created_folders.append(final_target_path)
 
@@ -553,23 +558,25 @@ class IstatConfiniPlugin:
             zip_path = download_info['path']
             suffix = download_info['suffix']
             boundary_type = self.user_options['boundary_type']
+            year = self.user_options['year']
             output_path = self.user_options['output_path']
             keep_files = self.user_options['keep_files']
 
-            # Mapping dei tipi di confine alle cartelle
+            # Mapping dei tipi di confine alle cartelle (parametrizzato per anno)
+            d = f"0101{year}"
             if suffix == "_generalizzata":
                 folder_mapping = {
-                    "regioni": "Reg01012025_g",
-                    "province": "ProvCM01012025_g",
-                    "comuni": "Com01012025_g",
-                    "ripartizioni": "RipGeo01012025_g"
+                    "regioni":       f"Reg{d}_g",
+                    "province":      f"ProvCM{d}_g",
+                    "comuni":        f"Com{d}_g",
+                    "ripartizioni":  f"RipGeo{d}_g",
                 }
             else:  # versione non generalizzata
                 folder_mapping = {
-                    "regioni": "Reg01012025",
-                    "province": "ProvCM01012025",
-                    "comuni": "Com01012025",
-                    "ripartizioni": "RipGeo01012025"
+                    "regioni":       f"Reg{d}",
+                    "province":      f"ProvCM{d}",
+                    "comuni":        f"Com{d}",
+                    "ripartizioni":  f"RipGeo{d}",
                 }
 
             target_folder = folder_mapping.get(boundary_type)
@@ -595,7 +602,7 @@ class IstatConfiniPlugin:
 
             # Crea la cartella di destinazione finale se necessario
             if keep_files:
-                final_folder_name = f"ISTAT_{boundary_type.capitalize()}_2025{suffix}"
+                final_folder_name = f"ISTAT_{boundary_type.capitalize()}_{year}{suffix}"
                 final_target_path = os.path.join(output_path, final_folder_name)
 
                 if os.path.exists(final_target_path):
@@ -635,7 +642,7 @@ class IstatConfiniPlugin:
             shp_path = os.path.join(shp_search_path, shp_files[0])
 
             # Carica il layer in QGIS
-            layer_name = f"ISTAT_{boundary_type.capitalize()}_2025{suffix}"
+            layer_name = f"ISTAT_{boundary_type.capitalize()}_{year}{suffix}"
             layer = QgsVectorLayer(shp_path, layer_name, "ogr")
 
             if not layer.isValid():
