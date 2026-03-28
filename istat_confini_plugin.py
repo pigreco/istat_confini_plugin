@@ -112,7 +112,11 @@ class DownloadThread(QThread):
             self.reply.downloadProgress.connect(self.on_download_progress)
             self.reply.finished.connect(self.on_finished)
             self.reply.readyRead.connect(self.on_ready_read)
-            self.reply.error.connect(self.on_error)
+            # Qt6: error() è solo un metodo, il segnale si chiama errorOccurred
+            if hasattr(self.reply, 'errorOccurred'):
+                self.reply.errorOccurred.connect(self.on_error)
+            else:
+                self.reply.error.connect(self.on_error)  # type: ignore[attr-defined]
 
             # Apri il file di output
             self.output_file = open(self.output_path, 'wb')
