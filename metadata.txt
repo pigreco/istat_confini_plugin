@@ -6,9 +6,11 @@
 
 [general]
 name=istat_confini_plugin
-qgisMinimumVersion=3.0
+qgisMinimumVersion=3.16
+qgisMaximumVersion=4.99
 description=Plugin per scaricare confini amministrativi ISTAT e griglia di popolazione 2021 su standard europeo
-version=1.1.0
+version=1.3.0
+supportsQt6=True
 plugin_name=Confini Amministrativi ISTAT
 author=Totò Fiandaca
 email=pigrecoinfinito@gmail.com
@@ -18,13 +20,13 @@ about=Questo plugin permette di scaricare direttamente i confini amministrativi 
     Supporta regioni, province, comuni e ripartizioni geografiche sia in versione generalizzata 
     che non generalizzata. Include anche la griglia di popolazione del Censimento 2021 
     con 13 variabili censuarie secondo il Regolamento UE 1799/2018.
-    I dati sono aggiornati al 1° gennaio 2025 e vengono scaricati direttamente dai server ISTAT.
+    I dati sono disponibili dal 2022 al 2026 e vengono scaricati direttamente dai server ISTAT.
     EN:This plugin allows direct download of Italian administrative boundaries from the ISTAT website 
     and the 2021 population grid on European standard (Eurostat). 
     It supports regions, provinces, municipalities and geographical divisions in both generalized 
     and non-generalized versions. It also includes the 2021 Census population grid 
     with 13 census variables according to EU Regulation 1799/2018.
-    Data is updated to January 1st, 2025 and downloaded directly from ISTAT servers.
+    Data is available from 2022 to 2026 and downloaded directly from ISTAT servers.
     
     Funzionalità principali:
     - Download automatico dei file ZIP da ISTAT
@@ -71,7 +73,21 @@ repository=https://github.com/pigreco/istat_confini_plugin
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=1.1.0
+changelog=1.3.0
+    - Selezione anno di riferimento 2022-2026 (default 2026) per i confini amministrativi
+    - URL di download parametrizzate per anno (1° gennaio dell'anno selezionato)
+    - Nomi layer e cartelle aggiornati dinamicamente con l'anno scelto
+    - Interfaccia tema scuro: stylesheet con palette() per compatibilità QGIS 4 / Win11
+    - Fix download: sostituito QEventLoop+QThread con QgsBlockingNetworkRequest
+    - Fix Qt6: QNetworkReply.error → errorOccurred
+    1.2.0
+    - Porting QGIS 4.x / Qt6 / PyQt6 (issue #2)
+    - exec_() → exec() per compatibilità Qt6
+    - Enum Qt qualificati (Qt.WindowModality, QMessageBox.StandardButton, QDialogButtonBox.StandardButton, QNetworkReply.NetworkError)
+    - Qgis.MessageLevel qualificato (Info/Warning/Critical)
+    - Costanti di compatibilità try/except per mantenere supporto QGIS 3.16+
+    - qgisMinimumVersion aggiornato a 3.16, qgisMaximumVersion=4.99, supportsQt6=True
+    1.1.0
     - 📊 NUOVO: Tab "Griglia di popolazione 2021" per dataset demografici ISTAT
     - 🔄 NUOVO: Download multipli simultanei (confini + griglia popolazione)  
     - ❌ NUOVO: Opzione "Nessun confine" per scaricare solo griglia popolazione
