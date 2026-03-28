@@ -6,9 +6,11 @@
 
 [general]
 name=istat_confini_plugin
-qgisMinimumVersion=3.0
+qgisMinimumVersion=3.16
+qgisMaximumVersion=4.99
 description=Plugin per scaricare confini amministrativi ISTAT e griglia di popolazione 2021 su standard europeo
-version=1.1.0
+version=1.2.0
+supportsQt6=True
 plugin_name=Confini Amministrativi ISTAT
 author=Totò Fiandaca
 email=pigrecoinfinito@gmail.com
@@ -71,7 +73,15 @@ repository=https://github.com/pigreco/istat_confini_plugin
 
 hasProcessingProvider=no
 # Uncomment the following line and add your changelog:
-changelog=1.1.0
+changelog=1.2.0
+    - Porting QGIS 4.x / Qt6 / PyQt6 (issue #2)
+    - exec_() → exec() per compatibilità Qt6
+    - Enum Qt qualificati (Qt.WindowModality, QMessageBox.StandardButton, QDialogButtonBox.StandardButton, QNetworkReply.NetworkError)
+    - Qgis.MessageLevel qualificato (Info/Warning/Critical)
+    - Costanti di compatibilità try/except per mantenere supporto QGIS 3.16+
+    - Fix stylesheet tema scuro: aggiunto color esplicito su QTabBar e QLineEdit
+    - qgisMinimumVersion aggiornato a 3.16
+    1.1.0
     - 📊 NUOVO: Tab "Griglia di popolazione 2021" per dataset demografici ISTAT
     - 🔄 NUOVO: Download multipli simultanei (confini + griglia popolazione)  
     - ❌ NUOVO: Opzione "Nessun confine" per scaricare solo griglia popolazione
