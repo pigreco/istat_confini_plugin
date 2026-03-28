@@ -10,7 +10,6 @@ qgisMinimumVersion=3.16
 qgisMaximumVersion=4.99
 description=Plugin per scaricare confini amministrativi ISTAT e griglia di popolazione 2021 su standard europeo
 version=1.3.0
-supportsQt6=True
 plugin_name=Confini Amministrativi ISTAT
 author=Totò Fiandaca
 email=pigrecoinfinito@gmail.com
